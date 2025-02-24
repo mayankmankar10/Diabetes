@@ -1,3 +1,2 @@
 ['remote "origin"']
-    url = s3://dvc
-    endpointurl = https://dagshub.com/mayankmankar10/machinelearningpipeline.s3
+    url = https://github.com/mayankmankar10/Diabetes.dvc
