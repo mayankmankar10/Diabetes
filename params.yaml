@@ -1,3 +1,23 @@
+preprocess:
+  input: data/raw/data.csv
+  output: data/processed/data.csv
+  scaler_path: models/scaler.pkl
+
+train:
+  data: data/processed/data.csv
+  model: models/model.pkl
+  random_state: 42
+  n_estimators: 200
+  max_depth: 15
+  min_samples_split: 5
+  min_samples_leaf: 2
+  max_features: 'sqrt'
+  class_weight: 'balanced'
+
+evaluate:
+  data: data/processed/data.csv
+  model: models/model.pkl
+
 stages:
   preprocess:
     cmd: python src/preprocess.py
@@ -11,30 +31,3 @@ stages:
     outs:
       - data/processed/data.csv
       - models/scaler.pkl
-
-  train:
-    cmd: python src/train.py
-    deps:
-      - src/train.py
-      - data/processed/data.csv
-    params:
-      - train.data
-      - train.model
-      - train.random_state
-      - train.n_estimators
-      - train.max_depth
-    outs:
-      - models/model.pkl
-
-  evaluate:
-    cmd: python src/evaluate.py
-    deps:
-      - src/evaluate.py
-      - data/processed/data.csv
-      - models/model.pkl
-    params:
-      - evaluate.data
-      - evaluate.model
-    metrics:
-      - metrics.json:
-          cache: false

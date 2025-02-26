@@ -55,8 +55,11 @@ def analyze_predictions(y_true, y_pred, data):
         if column != 'Outcome':
             # Calculate error rate by feature quartiles
             quartiles = pd.qcut(data[column], q=4, duplicates='drop')
-            error_rates = 1 - analysis_df.groupby(quartiles)['correct'].mean()
-            error_analysis[column] = error_rates.to_dict()
+            # Fix pandas deprecation warning by setting observed=False explicitly
+            error_rates = 1 - analysis_df.groupby(quartiles, observed=False)['correct'].mean()
+            
+            # Convert interval objects to strings to make them serializable
+            error_analysis[column] = {str(interval): float(rate) for interval, rate in error_rates.items()}
     
     return error_analysis
 
@@ -110,25 +113,28 @@ def evaluate(data_path, model_path):
     
     # Log results to MLflow
     print("\nLogging results to MLflow...")
-    with mlflow.start_run(run_name=f"model_evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
-        # Log metrics
-        mlflow.log_metric("test_accuracy", metrics['accuracy'])
-        mlflow.log_metric("test_roc_auc", metrics['roc_auc'])
-        mlflow.log_metric("test_pr_auc", metrics['pr_auc'])
-        mlflow.log_metric("test_avg_precision", metrics['average_precision'])
-        
-        # Log confusion matrix and classification report
-        mlflow.log_text(str(metrics['confusion_matrix']), "confusion_matrix.txt")
-        mlflow.log_text(metrics['classification_report'], "classification_report.txt")
-        
-        # Log error analysis
+    try:
+        with mlflow.start_run(run_name=f"model_evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
+            # Log metrics
+            mlflow.log_metric("test_accuracy", metrics['accuracy'])
+            mlflow.log_metric("test_roc_auc", metrics['roc_auc'])
+            mlflow.log_metric("test_pr_auc", metrics['pr_auc'])
+            mlflow.log_metric("test_avg_precision", metrics['average_precision'])
+            
+            # Log confusion matrix and classification report
+            mlflow.log_text(str(metrics['confusion_matrix']), "confusion_matrix.txt")
+            mlflow.log_text(metrics['classification_report'], "classification_report.txt")
+            
+            # Log error analysis as JSON
+            mlflow.log_dict(error_analysis, "error_analysis.json")
+            
+            print("\nEvaluation complete! Results have been logged to MLflow.")
+    except Exception as e:
+        print(f"Error logging to MLflow: {str(e)}")
+        # Save error analysis locally even if MLflow fails
         with open("error_analysis.json", "w") as f:
             json.dump(error_analysis, f, indent=2)
-        mlflow.log_artifact("error_analysis.json")
-    
-    print("\nEvaluation complete! Results have been logged to MLflow.")
-
-# ... existing code ...
+        print("Error analysis saved locally to error_analysis.json")
 
 if __name__ == "__main__":
     # Load parameters from params.yaml
